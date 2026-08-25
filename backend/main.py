@@ -64,6 +64,55 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 10
 APP_URL = os.getenv("APP_URL", "http://localhost:5173")
 
+# Gemini 3.1 Flash-Lite pricing (USD per 1M tokens) — update if model/pricing changes
+GEMINI_INPUT_COST_PER_M = 0.25
+GEMINI_OUTPUT_COST_PER_M = 1.50
+
+# Persistent audit log — lives alongside the SQLite DB on GCS mount
+_DB_DIR = Path(os.path.dirname(os.getenv("DB_PATH", "/tmp/ascend.db")))
+AUDIT_LOG_PATH = _DB_DIR / "audit.log"
+
+
+def _append_audit(entry: dict):
+    try:
+        with open(AUDIT_LOG_PATH, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass
+
+
+def _load_audit_entries(level: Optional[str] = None, limit: int = 200) -> list:
+    try:
+        with open(AUDIT_LOG_PATH) as f:
+            lines = f.readlines()
+        entries = []
+        for line in reversed(lines):
+            try:
+                e = json.loads(line.strip())
+                if not level or e.get("level") == level:
+                    entries.append(e)
+                if len(entries) >= limit:
+                    break
+            except Exception:
+                pass
+        return entries
+    except FileNotFoundError:
+        return []
+
+
+def _audit(level: str, logger_name: str, message: str, meta: Optional[dict] = None):
+    entry = {
+        "ts": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+        "level": level,
+        "logger": logger_name,
+        "message": message,
+    }
+    if meta:
+        entry["meta"] = meta
+    _append_audit(entry)
+    # Also emit to memory handler and stdout via standard logging
+    logging.getLogger(logger_name).log(getattr(logging, level), message)
+
 _security = HTTPBearer()
 
 
@@ -163,7 +212,7 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
     if not user["is_active"]:
         raise HTTPException(status_code=403, detail="Your account has been deactivated. Contact your admin.")
-    logger.info(f"User logged in: {email}")
+    _audit("INFO", "auth", f"User logged in: {email}")
     return {"token": _create_token(email, bool(user["is_admin"])), "is_admin": bool(user["is_admin"])}
 
 
@@ -210,6 +259,9 @@ def reset_password(req: ResetPasswordRequest):
 @app.get("/api/admin/logs")
 def get_logs(level: Optional[str] = None, limit: int = 200, user: dict = Depends(require_auth)):
     logger.info(f"[{user['email']}] Viewed admin logs")
+    file_entries = _load_audit_entries(level=level, limit=limit)
+    if file_entries:
+        return {"entries": file_entries}
     return {"entries": _mem_handler.entries(level=level, limit=limit)}
 
 
@@ -305,6 +357,20 @@ async def process_documents(session_id: str, req: ProcessRequest, user: dict = D
     for i, (doc_path, page_count) in enumerate(zip(split_paths, page_counts)):
         try:
             ai = await asyncio.to_thread(name_document, doc_path)
+            input_tok = ai.get("input_tokens", 0)
+            output_tok = ai.get("output_tokens", 0)
+            latency_ms = ai.get("latency_ms", 0)
+            cost_usd = (input_tok * GEMINI_INPUT_COST_PER_M + output_tok * GEMINI_OUTPUT_COST_PER_M) / 1_000_000
+            msg = (
+                f"[{user['email']}] Doc {i+1}/{len(page_counts)} '{ai.get('doc_type')} / {ai.get('client_name')}' "
+                f"— {input_tok}in+{output_tok}out tokens | ${cost_usd:.6f} | {latency_ms}ms"
+            )
+            _audit("INFO", "gemini", msg, meta={
+                "input_tokens": input_tok,
+                "output_tokens": output_tok,
+                "cost_usd": round(cost_usd, 6),
+                "latency_ms": latency_ms,
+            })
             documents.append({
                 "index": i,
                 "page_count": page_count,
@@ -315,6 +381,7 @@ async def process_documents(session_id: str, req: ProcessRequest, user: dict = D
             })
         except Exception as e:
             error_msg = str(e)
+            _audit("ERROR", "gemini", f"[{user['email']}] Failed to process doc {i} in session {session_id}: {error_msg}")
             logger.error(f"[{user['email']}] Failed to process doc {i} in session {session_id}: {error_msg}")
             quota_hit = "429" in error_msg or "quota" in error_msg.lower()
             documents.append({

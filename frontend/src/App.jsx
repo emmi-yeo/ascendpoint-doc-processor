@@ -780,15 +780,30 @@ function LogsPanel({ onClose }) {
           {entries.length === 0 ? (
             <div className="flex items-center justify-center h-32 text-slate-300">No entries</div>
           ) : entries.map((e, i) => (
-            <div key={i} className={`px-5 py-2.5 border-b border-slate-50 flex gap-3 items-start
+            <div key={i} className={`px-5 py-2.5 border-b border-slate-50
               ${e.level === 'ERROR' ? 'bg-red-50' : e.level === 'WARNING' ? 'bg-amber-50' : ''}`}>
-              <span className="text-slate-300 flex-shrink-0 w-36">{e.ts}</span>
-              <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${LEVEL_STYLES[e.level] || LEVEL_STYLES.INFO}`}>
-                {e.level}
-              </span>
-              <span className={`break-all leading-relaxed ${e.level === 'ERROR' ? 'text-red-700' : e.level === 'WARNING' ? 'text-amber-700' : 'text-slate-600'}`}>
-                {e.message}
-              </span>
+              <div className="flex gap-3 items-start">
+                <span className="text-slate-300 flex-shrink-0 w-36">{e.ts}</span>
+                <span className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${LEVEL_STYLES[e.level] || LEVEL_STYLES.INFO}`}>
+                  {e.level}
+                </span>
+                <span className={`break-all leading-relaxed ${e.level === 'ERROR' ? 'text-red-700' : e.level === 'WARNING' ? 'text-amber-700' : 'text-slate-600'}`}>
+                  {e.message}
+                </span>
+              </div>
+              {e.meta && (
+                <div className="ml-[10.5rem] mt-1.5 flex gap-1.5 flex-wrap">
+                  <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-mono">
+                    {e.meta.input_tokens}in + {e.meta.output_tokens}out tokens
+                  </span>
+                  <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-mono">
+                    ${e.meta.cost_usd.toFixed(6)}
+                  </span>
+                  <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-mono">
+                    {e.meta.latency_ms}ms
+                  </span>
+                </div>
+              )}
             </div>
           ))}
         </div>

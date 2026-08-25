@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 _model = genai.GenerativeModel(
-    "gemini-3.6-flash",
+    "gemini-3.1-flash-lite",
     generation_config=genai.GenerationConfig(response_mime_type="application/json"),
 )
 
@@ -61,12 +61,25 @@ def name_document(pdf_path: Path) -> dict:
     for attempt in range(max_retries):
         try:
             logger.info(f"Calling Gemini for {pdf_path.name} (attempt {attempt + 1})")
+            t0 = time.time()
             response = _model.generate_content([PROMPT, img])
+            latency_ms = int((time.time() - t0) * 1000)
             result = json.loads(response.text)
-            logger.info(f"Gemini result for {pdf_path.name}: {result}")
+
+            meta = response.usage_metadata
+            input_tokens = getattr(meta, "prompt_token_count", 0) or 0
+            output_tokens = getattr(meta, "candidates_token_count", 0) or 0
+
+            logger.info(
+                f"Gemini result for {pdf_path.name}: {result} | "
+                f"tokens: {input_tokens}in+{output_tokens}out | {latency_ms}ms"
+            )
             return {
                 "client_name": result.get("client_name", ""),
                 "doc_type": result.get("doc_type", ""),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "latency_ms": latency_ms,
             }
         except Exception as e:
             error_str = str(e)
