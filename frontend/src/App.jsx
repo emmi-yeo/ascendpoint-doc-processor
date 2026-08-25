@@ -27,6 +27,39 @@ function handle401(res) {
   return res
 }
 
+// ── Brand ─────────────────────────────────────────────────────────────────────
+
+const NAVY = '#1B3A6B'
+const ORANGE = '#F47B20'
+const RED = '#CC1122'
+
+function BrandLogo({ large = false }) {
+  const size = large ? '28px' : '18px'
+  const dotSize = large ? '8px' : '5px'
+  const dotTop = large ? '-6px' : '-4px'
+  const chineseSize = large ? '24px' : '15px'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: large ? 'center' : 'flex-start' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: large ? '4px' : '2px' }}>
+        <span style={{ color: NAVY, fontWeight: 800, fontSize: size, lineHeight: 1, letterSpacing: '-0.3px', position: 'relative', display: 'inline-block' }}>
+          AscendP
+          <span style={{ position: 'relative', display: 'inline-block' }}>
+            o
+            <span style={{ position: 'absolute', top: dotTop, left: '50%', transform: 'translateX(-50%)', width: dotSize, height: dotSize, backgroundColor: ORANGE, borderRadius: '50%', display: 'block' }} />
+          </span>
+          int
+        </span>
+        <span style={{ color: NAVY, fontWeight: 700, fontSize: chineseSize, lineHeight: 1 }}>恒升</span>
+      </div>
+      {large && (
+        <span style={{ color: RED, fontStyle: 'italic', fontWeight: 700, fontSize: '12px', letterSpacing: '0.4px', marginTop: '3px' }}>
+          Enriching Your Business
+        </span>
+      )}
+    </div>
+  )
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const IconUpload = () => (
@@ -110,13 +143,8 @@ function AuthCard({ title, children }) {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex w-12 h-12 rounded-xl bg-blue-600 items-center justify-center mb-4">
-            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-slate-800">Ascend Point</h1>
-          <p className="text-sm text-slate-400 mt-1">Document Processor</p>
+          <BrandLogo large />
+          <p className="text-sm text-slate-400 mt-3">Document Processor</p>
         </div>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <h2 className="font-semibold text-slate-700 mb-6 text-center">{title}</h2>
@@ -156,26 +184,26 @@ function LoginPage({ onLogin, onGoSignup, onGoForgot }) {
         <div className="mb-4">
           <label className="block text-xs font-medium text-slate-500 mb-1.5">Email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus required
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
         </div>
         <div className="mb-1">
           <label className="block text-xs font-medium text-slate-500 mb-1.5">Password</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
         </div>
         <div className="mb-6 text-right">
           <button type="button" onClick={onGoForgot}
-            className="text-xs text-blue-500 hover:text-blue-700">Forgot password?</button>
+            className="text-xs text-[#1B3A6B] hover:text-[#152E57]">Forgot password?</button>
         </div>
         {error && <p className="mb-4 text-xs text-red-500 text-center">{error}</p>}
         <button type="submit" disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
+          className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
           {loading ? <><IconSpinner small /> Signing in...</> : 'Sign in'}
         </button>
       </form>
       <p className="mt-5 text-center text-xs text-slate-400">
         No account?{' '}
-        <button onClick={onGoSignup} className="text-blue-500 hover:text-blue-700 font-medium">Sign up</button>
+        <button onClick={onGoSignup} className="text-[#1B3A6B] hover:text-[#152E57] font-medium">Sign up</button>
       </p>
     </AuthCard>
   )
@@ -212,27 +240,27 @@ function SignUpPage({ onLogin, onGoLogin }) {
         <div className="mb-4">
           <label className="block text-xs font-medium text-slate-500 mb-1.5">Work email</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus required
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
         </div>
         <div className="mb-4">
           <label className="block text-xs font-medium text-slate-500 mb-1.5">Password <span className="text-slate-300">(min 8 characters)</span></label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
         </div>
         <div className="mb-6">
           <label className="block text-xs font-medium text-slate-500 mb-1.5">Confirm password</label>
           <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
-            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
         </div>
         {error && <p className="mb-4 text-xs text-red-500 text-center">{error}</p>}
         <button type="submit" disabled={loading}
-          className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
+          className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
           {loading ? <><IconSpinner small /> Creating account...</> : 'Create account'}
         </button>
       </form>
       <p className="mt-5 text-center text-xs text-slate-400">
         Already have an account?{' '}
-        <button onClick={onGoLogin} className="text-blue-500 hover:text-blue-700 font-medium">Sign in</button>
+        <button onClick={onGoLogin} className="text-[#1B3A6B] hover:text-[#152E57] font-medium">Sign in</button>
       </p>
     </AuthCard>
   )
@@ -268,7 +296,7 @@ function ForgotPasswordPage({ onGoLogin }) {
             <IconCheck />
           </div>
           <p className="text-sm text-slate-600 mb-6">If that email is registered, a reset link has been sent. Check your inbox.</p>
-          <button onClick={onGoLogin} className="text-sm text-blue-500 hover:text-blue-700 font-medium">Back to sign in</button>
+          <button onClick={onGoLogin} className="text-sm text-[#1B3A6B] hover:text-[#152E57] font-medium">Back to sign in</button>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
@@ -276,15 +304,15 @@ function ForgotPasswordPage({ onGoLogin }) {
           <div className="mb-6">
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} autoFocus required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
           </div>
           {error && <p className="mb-4 text-xs text-red-500 text-center">{error}</p>}
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
+            className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
             {loading ? <><IconSpinner small /> Sending...</> : 'Send reset link'}
           </button>
           <p className="mt-5 text-center text-xs text-slate-400">
-            <button type="button" onClick={onGoLogin} className="text-blue-500 hover:text-blue-700 font-medium">Back to sign in</button>
+            <button type="button" onClick={onGoLogin} className="text-[#1B3A6B] hover:text-[#152E57] font-medium">Back to sign in</button>
           </p>
         </form>
       )}
@@ -334,16 +362,16 @@ function ResetPasswordPage({ token, onDone }) {
           <div className="mb-4">
             <label className="block text-xs font-medium text-slate-500 mb-1.5">New password <span className="text-slate-300">(min 8 characters)</span></label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoFocus required minLength={8}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
           </div>
           <div className="mb-6">
             <label className="block text-xs font-medium text-slate-500 mb-1.5">Confirm password</label>
             <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent" />
           </div>
           {error && <p className="mb-4 text-xs text-red-500 text-center">{error}</p>}
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
+            className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm transition-all disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
             {loading ? <><IconSpinner small /> Saving...</> : 'Set new password'}
           </button>
         </form>
@@ -364,13 +392,13 @@ function StepBar({ current }) {
         <div key={s} className="flex items-center">
           <div className="flex flex-col items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all
-              ${i < idx ? 'bg-blue-600 text-white' : i === idx ? 'bg-blue-600 text-white ring-4 ring-blue-100' : 'bg-white text-slate-400 border-2 border-slate-200'}`}>
+              ${i < idx ? 'bg-[#1B3A6B] text-white' : i === idx ? 'bg-[#1B3A6B] text-white ring-4 ring-[#d0e0f5]' : 'bg-white text-slate-400 border-2 border-slate-200'}`}>
               {i < idx ? <IconCheck /> : i + 1}
             </div>
-            <span className={`mt-1.5 text-xs font-medium ${i <= idx ? 'text-blue-600' : 'text-slate-400'}`}>{s}</span>
+            <span className={`mt-1.5 text-xs font-medium ${i <= idx ? 'text-[#1B3A6B]' : 'text-slate-400'}`}>{s}</span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`w-16 h-0.5 mb-5 mx-1 transition-all ${i < idx ? 'bg-blue-600' : 'bg-slate-200'}`} />
+            <div className={`w-16 h-0.5 mb-5 mx-1 transition-all ${i < idx ? 'bg-[#1B3A6B]' : 'bg-slate-200'}`} />
           )}
         </div>
       ))}
@@ -419,12 +447,12 @@ function UploadStep({ onUploaded }) {
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={`w-full border-2 border-dashed rounded-2xl p-16 flex flex-col items-center justify-center cursor-pointer transition-all
-          ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-400 hover:bg-slate-50'}`}>
-        <div className={`mb-4 transition-colors ${dragging ? 'text-blue-500' : 'text-slate-300'}`}>
+          ${dragging ? 'border-blue-500 bg-[#eef3fb]' : 'border-slate-200 bg-white hover:border-[#4a7ab5] hover:bg-slate-50'}`}>
+        <div className={`mb-4 transition-colors ${dragging ? 'text-[#1B3A6B]' : 'text-slate-300'}`}>
           <IconUpload />
         </div>
         {uploading ? (
-          <div className="flex items-center gap-2 text-blue-600 font-medium"><IconSpinner /> Uploading...</div>
+          <div className="flex items-center gap-2 text-[#1B3A6B] font-medium"><IconSpinner /> Uploading...</div>
         ) : (
           <>
             <p className="text-slate-700 font-semibold text-lg mb-1">Drop your scanned PDFs here</p>
@@ -481,7 +509,7 @@ function ConfigureStep({ sessions, onProcess, onAddMore }) {
           <p className="text-xs text-slate-400 mt-0.5">Enter how many pages each document has per file</p>
         </div>
         <button onClick={() => inputRef.current.click()}
-          className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium">
+          className="flex items-center gap-1.5 text-sm text-[#1B3A6B] hover:text-[#0f2040] font-medium">
           <IconPlus /> Add more files
         </button>
         <input ref={inputRef} type="file" accept=".pdf" multiple className="hidden"
@@ -508,7 +536,7 @@ function ConfigureStep({ sessions, onProcess, onAddMore }) {
               <td className="px-4 py-4">
                 <input type="number" min="1" value={pageCounts[row.session_id]}
                   onChange={(e) => setCount(row.session_id, e.target.value)} placeholder="1"
-                  className={`w-full border rounded-lg px-3 py-1.5 text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                  className={`w-full border rounded-lg px-3 py-1.5 text-sm text-center font-mono focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent
                     ${pageCounts[row.session_id] && !row.valid ? 'border-red-300 bg-red-50' : 'border-slate-200'}`} />
               </td>
               <td className="px-4 py-4 text-center">
@@ -532,7 +560,7 @@ function ConfigureStep({ sessions, onProcess, onAddMore }) {
         <button onClick={() => onProcess(rows.map(r => ({ session_id: r.session_id, page_count: r.n })))}
           disabled={!allValid}
           className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm transition-all
-            bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
+            bg-[#1B3A6B] hover:bg-[#152E57] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed">
           {allValid ? `Split & Name ${totalDocs} Documents` : 'Split & Name Documents'}
         </button>
       </div>
@@ -651,7 +679,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
                       </div>
                     )}
                     <div className="flex items-start gap-3">
-                      <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${doc.error ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                      <div className={`mt-0.5 w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold ${doc.error ? 'bg-amber-100 text-amber-600' : 'bg-[#eef3fb] text-[#1B3A6B]'}`}>
                         {globalIdx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -659,24 +687,24 @@ function ReviewStep({ documents: initialDocs, onReset }) {
                           <div>
                             <label className="block text-xs font-medium text-slate-400 mb-1">Document Type</label>
                             <input value={doc.doc_type} onChange={(e) => update(globalIdx, 'doc_type', e.target.value)}
-                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0" />
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent min-w-0" />
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-slate-400 mb-1">Client Name</label>
                             <input value={doc.client_name} onChange={(e) => update(globalIdx, 'client_name', e.target.value)}
-                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0" />
+                              className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B] focus:border-transparent min-w-0" />
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-slate-400">Folder:</span>
-                          <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                          <span className="text-xs font-medium text-[#1B3A6B] bg-[#eef3fb] px-2 py-0.5 rounded">
                             {(doc.doc_type || 'Other').replace(/\s+/g, '_')}/
                           </span>
                           <span className="text-xs text-slate-400">File:</span>
                           <span className="text-xs font-mono text-slate-600 truncate">{doc.suggested_name}</span>
                           <span className="text-xs text-slate-300">{doc.page_count}p</span>
                           <button onClick={() => handleDownloadOne(doc)} disabled={downloadingRow === rowKey}
-                            className="ml-auto flex-shrink-0 text-xs text-blue-600 hover:text-blue-800 disabled:text-slate-300 font-medium flex items-center gap-1">
+                            className="ml-auto flex-shrink-0 text-xs text-[#1B3A6B] hover:text-[#0f2040] disabled:text-slate-300 font-medium flex items-center gap-1">
                             {downloadingRow === rowKey ? <IconSpinner small /> : <IconDownload />}
                             {downloadingRow === rowKey ? '' : 'Download'}
                           </button>
@@ -697,11 +725,11 @@ function ReviewStep({ documents: initialDocs, onReset }) {
           <IconReset /> Process another batch
         </button>
         <button onClick={handleDownloadAllPdfs} disabled={downloadingAll || downloading}
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-blue-200 text-blue-600 hover:bg-blue-50 font-semibold text-sm transition-all disabled:border-slate-200 disabled:text-slate-400">
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-[#b8cfe8] text-[#1B3A6B] hover:bg-[#eef3fb] font-semibold text-sm transition-all disabled:border-slate-200 disabled:text-slate-400">
           {downloadingAll ? <><IconSpinner /> Downloading...</> : <><IconDownload /> Download All as PDF</>}
         </button>
         <button onClick={handleDownloadAll} disabled={downloading || downloadingAll}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all disabled:bg-slate-200 disabled:text-slate-400">
+          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold transition-all disabled:bg-slate-200 disabled:text-slate-400">
           {downloading ? <><IconSpinner /> Preparing...</> : <><IconDownload /> Download All as ZIP</>}
         </button>
       </div>
@@ -760,7 +788,7 @@ function LogsPanel({ onClose }) {
               Auto-refresh
             </label>
             <button onClick={fetchLogs} disabled={loading}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium disabled:text-slate-300">
+              className="text-xs text-[#1B3A6B] hover:text-[#0f2040] font-medium disabled:text-slate-300">
               {loading ? 'Loading…' : 'Refresh'}
             </button>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><IconClose /></button>
@@ -770,7 +798,7 @@ function LogsPanel({ onClose }) {
           {['ALL', 'ERROR', 'WARNING', 'INFO'].map(lvl => (
             <button key={lvl} onClick={() => setFilter(lvl)}
               className={`px-3 py-1 rounded-full text-xs font-semibold transition-all
-                ${filter === lvl ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                ${filter === lvl ? 'bg-[#1B3A6B] text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
               {lvl}{lvl !== 'ALL' && counts[lvl] ? <span className="ml-1 opacity-70">{counts[lvl]}</span> : null}
             </button>
           ))}
@@ -799,7 +827,7 @@ function LogsPanel({ onClose }) {
                   <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-mono">
                     ${e.meta.cost_usd.toFixed(6)}
                   </span>
-                  <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-mono">
+                  <span className="text-[10px] bg-[#eef3fb] text-[#1B3A6B] px-2 py-0.5 rounded-full font-mono">
                     {e.meta.latency_ms}ms
                   </span>
                 </div>
@@ -868,15 +896,15 @@ function UsersPanel({ onClose }) {
 
         {/* Reset link modal */}
         {resetLink && (
-          <div className="mx-5 mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+          <div className="mx-5 mt-4 p-4 bg-[#eef3fb] border border-[#b8cfe8] rounded-xl">
             <p className="text-xs font-semibold text-blue-700 mb-1">Reset link for {resetLink.email}</p>
-            <p className="text-xs text-blue-500 mb-3">Expires in 1 hour. Send this via Teams or WhatsApp.</p>
+            <p className="text-xs text-[#1B3A6B] mb-3">Expires in 1 hour. Send this via Teams or WhatsApp.</p>
             <div className="flex gap-2">
               <input readOnly value={resetLink.url}
-                className="flex-1 text-xs font-mono bg-white border border-blue-200 rounded-lg px-3 py-2 text-slate-600 focus:outline-none" />
+                className="flex-1 text-xs font-mono bg-white border border-[#b8cfe8] rounded-lg px-3 py-2 text-slate-600 focus:outline-none" />
               <button onClick={copyLink}
                 className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all flex-shrink-0
-                  ${copied ? 'bg-emerald-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}>
+                  ${copied ? 'bg-emerald-500 text-white' : 'bg-[#1B3A6B] text-white hover:bg-[#152E57]'}`}>
                 {copied ? 'Copied!' : 'Copy'}
               </button>
               <button onClick={() => setResetLink(null)}
@@ -913,7 +941,7 @@ function UsersPanel({ onClose }) {
                     </td>
                     <td className="px-3 py-3 text-center">
                       <button onClick={() => toggle(u, 'is_admin')}
-                        className={`w-10 h-5 rounded-full transition-colors relative ${u.is_admin ? 'bg-blue-500' : 'bg-slate-200'}`}>
+                        className={`w-10 h-5 rounded-full transition-colors relative ${u.is_admin ? 'bg-[#eef3fb]0' : 'bg-slate-200'}`}>
                         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${u.is_admin ? 'left-5' : 'left-0.5'}`} />
                       </button>
                     </td>
@@ -921,7 +949,7 @@ function UsersPanel({ onClose }) {
                     <td className="px-3 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => getResetLink(u)}
-                          className="text-xs text-blue-500 hover:text-blue-700 font-medium whitespace-nowrap">
+                          className="text-xs text-[#1B3A6B] hover:text-[#152E57] font-medium whitespace-nowrap">
                           Reset link
                         </button>
                         <button onClick={() => remove(u)} className="text-slate-200 hover:text-red-400 transition-colors">
@@ -1027,14 +1055,8 @@ export default function App() {
 
       <header className="bg-white border-b border-slate-100 shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" />
-            </svg>
-          </div>
           <div className="flex-1">
-            <span className="font-bold text-slate-800 text-lg leading-none">Ascend Point</span>
-            <span className="text-slate-400 text-sm ml-2">Document Processor</span>
+            <BrandLogo />
           </div>
           {isAdmin && (
             <>
