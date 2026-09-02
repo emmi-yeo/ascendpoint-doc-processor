@@ -158,7 +158,7 @@ async def require_admin(user: dict = Depends(require_auth)) -> dict:
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Ascend Point Document Processor")
+app = FastAPI(title="AscendPoint Document Processor")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 SESSIONS_DIR = Path("/tmp/sessions")

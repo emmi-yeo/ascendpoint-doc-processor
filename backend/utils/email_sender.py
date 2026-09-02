@@ -18,15 +18,15 @@ def send_reset_email(to_email: str, reset_url: str):
         raise RuntimeError("SMTP not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS in .env")
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = "Reset your Ascend Point password"
-    msg["From"] = f"Ascend Point <{from_addr}>"
+    msg["Subject"] = "Reset your AscendPoint password"
+    msg["From"] = f"AscendPoint <{from_addr}>"
     msg["To"] = to_email
 
     text = f"Click the link below to reset your password (expires in 1 hour):\n\n{reset_url}\n\nIf you did not request this, ignore this email."
     html = f"""
     <div style="font-family:sans-serif;max-width:480px;margin:40px auto">
       <div style="background:#2563eb;padding:20px 24px;border-radius:12px 12px 0 0">
-        <span style="color:white;font-weight:700;font-size:18px">Ascend Point</span>
+        <span style="color:white;font-weight:700;font-size:18px">AscendPoint</span>
       </div>
       <div style="background:#fff;border:1px solid #e2e8f0;border-top:none;padding:32px 24px;border-radius:0 0 12px 12px">
         <p style="color:#334155;font-size:15px">You requested a password reset. Click the button below — the link expires in <strong>1 hour</strong>.</p>
