@@ -671,11 +671,28 @@ function ReviewStep({ documents: initialDocs, onReset }) {
   const handleDownloadAllPdfs = async () => {
     setDownloadingAll(true)
     try {
+      let dirHandle = null
+      if (window.showDirectoryPicker) {
+        try {
+          dirHandle = await window.showDirectoryPicker()
+        } catch (e) {
+          if (e.name === 'AbortError') return
+          // fall through to legacy on unexpected error
+        }
+      }
       for (const doc of docs) {
         const res = await authFetch(`/api/download/${doc.session_id}/${doc.index}?filename=${encodeURIComponent(doc.suggested_name)}`)
         if (!res.ok) continue
-        triggerDownloadLegacy(await res.blob(), doc.suggested_name)
-        await new Promise(r => setTimeout(r, 400))
+        const blob = await res.blob()
+        if (dirHandle) {
+          const fh = await dirHandle.getFileHandle(doc.suggested_name, { create: true })
+          const writable = await fh.createWritable()
+          await writable.write(blob)
+          await writable.close()
+        } else {
+          triggerDownloadLegacy(blob, doc.suggested_name)
+          await new Promise(r => setTimeout(r, 400))
+        }
       }
     } finally { setDownloadingAll(false) }
   }
