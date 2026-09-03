@@ -127,7 +127,8 @@ function makeFilename(docType, clientName) {
   return `${type}_${client}_${todayStr()}.pdf`
 }
 
-async function triggerDownload(blob, filename) {
+// Opens save dialog BEFORE fetching so the user gesture context is preserved
+async function triggerDownload(fetchBlobFn, filename) {
   if (window.showSaveFilePicker) {
     try {
       const ext = filename.split('.').pop().toLowerCase()
@@ -136,15 +137,27 @@ async function triggerDownload(blob, filename) {
         suggestedName: filename,
         types: [{ description: 'File', accept: { [mime]: [`.${ext}`] } }],
       })
+      const blob = await fetchBlobFn()
       const writable = await handle.createWritable()
       await writable.write(blob)
       await writable.close()
       return
     } catch (e) {
       if (e.name === 'AbortError') return
-      // fall through to legacy method on unexpected error
+      // fall through on unexpected error
     }
   }
+  const blob = await fetchBlobFn()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// Legacy method for batch sequential downloads (multiple dialogs would be annoying)
+function triggerDownloadLegacy(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -642,14 +655,16 @@ function ReviewStep({ documents: initialDocs, onReset }) {
         sessionMap[doc.session_id].push(doc)
       })
       const sessions = Object.entries(sessionMap).map(([session_id, documents]) => ({ session_id, documents }))
-      const res = await authFetch('/api/download-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessions }),
-      })
-      handle401(res)
-      if (!res.ok) throw new Error('Download failed')
-      triggerDownload(await res.blob(), 'processed_documents.zip')
+      await triggerDownload(async () => {
+        const res = await authFetch('/api/download-batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessions }),
+        })
+        handle401(res)
+        if (!res.ok) throw new Error('Download failed')
+        return res.blob()
+      }, 'processed_documents.zip')
     } catch (e) { alert(e.message) } finally { setDownloading(false) }
   }
 
@@ -659,7 +674,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
       for (const doc of docs) {
         const res = await authFetch(`/api/download/${doc.session_id}/${doc.index}?filename=${encodeURIComponent(doc.suggested_name)}`)
         if (!res.ok) continue
-        triggerDownload(await res.blob(), doc.suggested_name)
+        triggerDownloadLegacy(await res.blob(), doc.suggested_name)
         await new Promise(r => setTimeout(r, 400))
       }
     } finally { setDownloadingAll(false) }
@@ -668,10 +683,12 @@ function ReviewStep({ documents: initialDocs, onReset }) {
   const handleDownloadOne = async (doc) => {
     setDownloadingRow(`${doc.session_id}-${doc.index}`)
     try {
-      const res = await authFetch(`/api/download/${doc.session_id}/${doc.index}?filename=${encodeURIComponent(doc.suggested_name)}`)
-      handle401(res)
-      if (!res.ok) throw new Error('Download failed')
-      triggerDownload(await res.blob(), doc.suggested_name)
+      await triggerDownload(async () => {
+        const res = await authFetch(`/api/download/${doc.session_id}/${doc.index}?filename=${encodeURIComponent(doc.suggested_name)}`)
+        handle401(res)
+        if (!res.ok) throw new Error('Download failed')
+        return res.blob()
+      }, doc.suggested_name)
     } catch (e) { alert(e.message) } finally { setDownloadingRow(null) }
   }
 
