@@ -199,8 +199,10 @@ def register(req: RegisterRequest):
         raise HTTPException(status_code=409, detail="An account with this email already exists.")
     pw_hash = _hash_password(req.password)
     user = create_user(email, pw_hash)
-    logger.info(f"New user registered: {email} (admin={user['is_admin']})")
-    return {"token": _create_token(email, bool(user["is_admin"])), "is_admin": bool(user["is_admin"])}
+    logger.info(f"New user registered: {email} (admin={user['is_admin']}, active={user['is_active']})")
+    if user["is_admin"]:
+        return {"token": _create_token(email, True), "is_admin": True}
+    return {"pending": True}
 
 
 @app.post("/api/auth/login")
@@ -211,7 +213,7 @@ def login(req: LoginRequest):
         logger.warning(f"Failed login for {email}")
         raise HTTPException(status_code=401, detail="Incorrect email or password.")
     if not user["is_active"]:
-        raise HTTPException(status_code=403, detail="Your account has been deactivated. Contact your admin.")
+        raise HTTPException(status_code=403, detail="Your account is pending approval. Please contact your admin.")
     _audit("INFO", "auth", f"User logged in: {email}")
     return {"token": _create_token(email, bool(user["is_admin"])), "is_admin": bool(user["is_admin"])}
 

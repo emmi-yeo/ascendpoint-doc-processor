@@ -55,10 +55,11 @@ def get_user_by_id(user_id: int):
 def create_user(email: str, password_hash: str) -> dict:
     with get_db() as conn:
         count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        is_admin = 1 if count == 0 else 0  # first user becomes admin
+        is_admin = 1 if count == 0 else 0
+        is_active = 1 if count == 0 else 0  # first user auto-approved; others await admin approval
         conn.execute(
-            "INSERT INTO users (email, password_hash, is_admin) VALUES (?, ?, ?)",
-            (email, password_hash, is_admin),
+            "INSERT INTO users (email, password_hash, is_admin, is_active) VALUES (?, ?, ?, ?)",
+            (email, password_hash, is_admin, is_active),
         )
         row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
         return dict(row)

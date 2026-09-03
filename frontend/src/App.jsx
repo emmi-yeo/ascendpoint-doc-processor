@@ -127,7 +127,24 @@ function makeFilename(docType, clientName) {
   return `${type}_${client}_${todayStr()}.pdf`
 }
 
-function triggerDownload(blob, filename) {
+async function triggerDownload(blob, filename) {
+  if (window.showSaveFilePicker) {
+    try {
+      const ext = filename.split('.').pop().toLowerCase()
+      const mime = ext === 'zip' ? 'application/zip' : 'application/pdf'
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'File', accept: { [mime]: [`.${ext}`] } }],
+      })
+      const writable = await handle.createWritable()
+      await writable.write(blob)
+      await writable.close()
+      return
+    } catch (e) {
+      if (e.name === 'AbortError') return
+      // fall through to legacy method on unexpected error
+    }
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -215,6 +232,7 @@ function SignUpPage({ onLogin, onGoLogin }) {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -229,9 +247,27 @@ function SignUpPage({ onLogin, onGoLogin }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.detail || 'Registration failed')
+      if (data.pending) { setPending(true); return }
       setToken(data.token)
       onLogin(data.is_admin)
     } catch (e) { setError(e.message) } finally { setLoading(false) }
+  }
+
+  if (pending) {
+    return (
+      <AuthCard title="Account created">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="text-sm font-semibold text-slate-700 mb-2">Awaiting approval</p>
+          <p className="text-xs text-slate-500 mb-6">Your account has been created. An admin will activate it shortly — you'll be able to sign in once approved.</p>
+          <button onClick={onGoLogin} className="text-sm text-[#1B3A6B] hover:text-[#152E57] font-medium">Back to sign in</button>
+        </div>
+      </AuthCard>
+    )
   }
 
   return (
@@ -932,7 +968,10 @@ function UsersPanel({ onClose }) {
               <tbody className="divide-y divide-slate-50">
                 {users.map(u => (
                   <tr key={u.id} className="hover:bg-slate-50">
-                    <td className="px-5 py-3 text-slate-700 font-medium truncate max-w-[180px]">{u.email}</td>
+                    <td className="px-5 py-3">
+                      <span className="text-slate-700 font-medium truncate max-w-[160px] block">{u.email}</span>
+                      {!u.is_active && <span className="text-[10px] font-semibold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded">Pending approval</span>}
+                    </td>
                     <td className="px-3 py-3 text-center">
                       <button onClick={() => toggle(u, 'is_active')}
                         className={`w-10 h-5 rounded-full transition-colors relative ${u.is_active ? 'bg-emerald-500' : 'bg-slate-200'}`}>
