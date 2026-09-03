@@ -680,7 +680,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
         } catch (e) {
           if (e.name === 'AbortError') return
           if (e.name === 'SecurityError') {
-            setDlMsg('Desktop and Downloads folders are blocked by Chrome. Choose a subfolder inside them, or files will save to your default Downloads folder.')
+            setDlMsg('Chrome security restriction — Desktop, Downloads, Documents, and root drives cannot be selected. Please choose a subfolder inside them instead, or files will be saved to your default Downloads folder.')
           }
           // fall through to legacy
         }
