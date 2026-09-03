@@ -636,6 +636,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
   const [downloading, setDownloading] = useState(false)
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [downloadingRow, setDownloadingRow] = useState(null)
+  const [dlMsg, setDlMsg] = useState('')
 
   const update = (i, field, value) => {
     setDocs(prev => {
@@ -675,9 +676,13 @@ function ReviewStep({ documents: initialDocs, onReset }) {
       if (window.showDirectoryPicker) {
         try {
           dirHandle = await window.showDirectoryPicker()
+          setDlMsg('')
         } catch (e) {
           if (e.name === 'AbortError') return
-          // fall through to legacy on unexpected error
+          if (e.name === 'SecurityError') {
+            setDlMsg('Desktop and Downloads folders are blocked by Chrome. Choose a subfolder inside them, or files will save to your default Downloads folder.')
+          }
+          // fall through to legacy
         }
       }
       for (const doc of docs) {
@@ -789,6 +794,15 @@ function ReviewStep({ documents: initialDocs, onReset }) {
         ))}
       </div>
 
+      {dlMsg && (
+        <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
+          <span>{dlMsg}</span>
+          <button onClick={() => setDlMsg('')} className="ml-auto text-amber-400 hover:text-amber-600 flex-shrink-0">✕</button>
+        </div>
+      )}
       <div className="mt-4 flex gap-3 flex-wrap">
         <button onClick={onReset}
           className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-all">
