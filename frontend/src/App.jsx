@@ -781,7 +781,7 @@ const LEVEL_STYLES = {
   INFO:    'bg-slate-100 text-slate-600',
 }
 
-function LogsPanel({ onClose }) {
+function LogsPanel({ onClose, isAdmin }) {
   const [entries, setEntries] = useState([])
   const [filter, setFilter] = useState('ALL')
   const [autoRefresh, setAutoRefresh] = useState(true)
@@ -791,8 +791,9 @@ function LogsPanel({ onClose }) {
   const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
+      const endpoint = isAdmin ? '/api/admin/logs' : '/api/logs/mine'
       const params = filter !== 'ALL' ? `?level=${filter}` : ''
-      const res = await authFetch(`/api/admin/logs${params}`)
+      const res = await authFetch(`${endpoint}${params}`)
       handle401(res)
       const data = await res.json()
       setEntries(data.entries || [])
@@ -815,7 +816,7 @@ function LogsPanel({ onClose }) {
       <div className="relative w-full max-w-2xl bg-white shadow-2xl flex flex-col h-full">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <div>
-            <h2 className="font-semibold text-slate-800">Activity Log</h2>
+            <h2 className="font-semibold text-slate-800">{isAdmin ? 'Activity Log' : 'My Activity'}</h2>
             {lastFetched && <p className="text-xs text-slate-400 mt-0.5">Last updated {lastFetched}</p>}
           </div>
           <div className="flex items-center gap-3">
@@ -1089,7 +1090,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {logsOpen && <LogsPanel onClose={() => setLogsOpen(false)} />}
+      {logsOpen && <LogsPanel onClose={() => setLogsOpen(false)} isAdmin={isAdmin} />}
       {usersOpen && <UsersPanel onClose={() => setUsersOpen(false)} />}
 
       <header className="bg-white border-b border-slate-100 shadow-sm">
@@ -1105,7 +1106,9 @@ export default function App() {
             </>
           )}
           <button onClick={() => setLogsOpen(true)}
-            className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">Logs</button>
+            className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">
+            {isAdmin ? 'Logs' : 'My Activity'}
+          </button>
           <span className="text-slate-200">|</span>
           <button onClick={logout}
             className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">Sign out</button>

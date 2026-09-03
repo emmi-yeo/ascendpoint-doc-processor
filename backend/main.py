@@ -259,12 +259,24 @@ def reset_password(req: ResetPasswordRequest):
 # ── Admin endpoints ────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/logs")
-def get_logs(level: Optional[str] = None, limit: int = 200, user: dict = Depends(require_auth)):
-    logger.info(f"[{user['email']}] Viewed admin logs")
+def get_logs(level: Optional[str] = None, limit: int = 200, admin: dict = Depends(require_admin)):
+    logger.info(f"[{admin['email']}] Viewed admin logs")
     file_entries = _load_audit_entries(level=level, limit=limit)
     if file_entries:
         return {"entries": file_entries}
     return {"entries": _mem_handler.entries(level=level, limit=limit)}
+
+
+@app.get("/api/logs/mine")
+def get_my_logs(level: Optional[str] = None, limit: int = 200, user: dict = Depends(require_auth)):
+    email = user["email"]
+    all_entries = _load_audit_entries(limit=1000)
+    if not all_entries:
+        all_entries = _mem_handler.entries(limit=1000)
+    filtered = [e for e in all_entries if email in e.get("message", "")]
+    if level:
+        filtered = [e for e in filtered if e.get("level") == level]
+    return {"entries": filtered[:limit]}
 
 
 @app.get("/api/admin/users")
