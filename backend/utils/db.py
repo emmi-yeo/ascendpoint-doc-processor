@@ -26,6 +26,22 @@ def init_db():
                 used INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
+            CREATE TABLE IF NOT EXISTS xpm_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                access_token TEXT NOT NULL,
+                refresh_token TEXT NOT NULL,
+                expires_at REAL NOT NULL,
+                tenant_id TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS xpm_clients_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                xpm_client_id TEXT,
+                name TEXT NOT NULL,
+                job_admin_name TEXT,
+                job_admin_email TEXT,
+                raw_json TEXT,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
         """)
 
 

@@ -637,6 +637,80 @@ function ReviewStep({ documents: initialDocs, onReset }) {
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [downloadingRow, setDownloadingRow] = useState(null)
   const [dlMsg, setDlMsg] = useState('')
+  const [routing, setRouting] = useState({})          // key → route info
+  const [overrides, setOverrides] = useState({})       // key → {email, name, subject, body}
+  const [sentDocs, setSentDocs] = useState(new Set())
+  const [sendingDoc, setSendingDoc] = useState(null)
+  const [sendError, setSendError] = useState({})
+
+  useEffect(() => {
+    initialDocs.forEach(async doc => {
+      const key = `${doc.session_id}-${doc.index}`
+      try {
+        const res = await authFetch(`/api/route/${doc.session_id}/${doc.index}`)
+        if (res.ok) {
+          const data = await res.json()
+          setRouting(prev => ({ ...prev, [key]: data }))
+        }
+      } catch {}
+    })
+  }, [])
+
+  const getRecipient = (key) => overrides[key] || routing[key] || null
+
+  const handleSend = async (doc) => {
+    const key = `${doc.session_id}-${doc.index}`
+    const route = getRecipient(key)
+    if (!route?.routed) return
+    setSendingDoc(key)
+    setSendError(prev => ({ ...prev, [key]: null }))
+    try {
+      const res = await authFetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: doc.session_id,
+          doc_index: doc.index,
+          recipient_email: route.recipient_email,
+          recipient_name: route.recipient_name,
+          subject: route.subject,
+          body: route.body,
+          suggested_name: doc.suggested_name,
+        }),
+      })
+      handle401(res)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Send failed')
+      setSentDocs(prev => new Set([...prev, key]))
+    } catch (e) {
+      setSendError(prev => ({ ...prev, [key]: e.message }))
+    } finally {
+      setSendingDoc(null)
+    }
+  }
+
+  const handleSendAll = async () => {
+    for (const doc of docs) {
+      const key = `${doc.session_id}-${doc.index}`
+      const route = getRecipient(key)
+      if (route?.routed && !sentDocs.has(key)) {
+        await handleSend(doc)
+      }
+    }
+  }
+
+  const updateOverride = (key, field, value) => {
+    setOverrides(prev => ({
+      ...prev,
+      [key]: { ...(prev[key] || routing[key] || {}), [field]: value },
+    }))
+  }
+
+  const routedCount = docs.filter(doc => {
+    const key = `${doc.session_id}-${doc.index}`
+    const r = getRecipient(key)
+    return r?.routed && !sentDocs.has(key)
+  }).length
 
   const update = (i, field, value) => {
     setDocs(prev => {
@@ -785,6 +859,71 @@ function ReviewStep({ documents: initialDocs, onReset }) {
                             {downloadingRow === rowKey ? '' : 'Download'}
                           </button>
                         </div>
+
+                        {/* Routing panel */}
+                        {(() => {
+                          const route = getRecipient(rowKey)
+                          const sent = sentDocs.has(rowKey)
+                          const sending = sendingDoc === rowKey
+                          const err = sendError[rowKey]
+                          if (!route) return (
+                            <div className="mt-2 text-xs text-slate-300 italic">Checking routing…</div>
+                          )
+                          if (!route.routed) return (
+                            <div className="mt-2 text-xs text-slate-400 italic">No routing rule — {route.reason}</div>
+                          )
+                          const override = overrides[rowKey] || {}
+                          return (
+                            <div className="mt-3 pt-3 border-t border-slate-100">
+                              <div className="flex items-start gap-2 flex-wrap">
+                                <span className="text-xs text-slate-400 mt-1.5 flex-shrink-0">📧 Email to:</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex gap-2 flex-wrap">
+                                    <input
+                                      value={override.recipient_name ?? route.recipient_name ?? ''}
+                                      onChange={e => updateOverride(rowKey, 'recipient_name', e.target.value)}
+                                      placeholder="Name"
+                                      className="border border-slate-200 rounded px-2 py-1 text-xs w-36 focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                                    />
+                                    <input
+                                      value={override.recipient_email ?? route.recipient_email ?? ''}
+                                      onChange={e => updateOverride(rowKey, 'recipient_email', e.target.value)}
+                                      placeholder="Email address"
+                                      className="border border-slate-200 rounded px-2 py-1 text-xs flex-1 min-w-[180px] focus:outline-none focus:ring-1 focus:ring-[#1B3A6B]"
+                                    />
+                                  </div>
+                                  {route.match_score && (
+                                    <p className="text-[10px] text-slate-400 mt-1">
+                                      XPM match: <span className="font-medium text-slate-600">{route.xpm_client_name}</span> — {route.match_score}% confidence
+                                      {route.xpm_matches?.length > 1 && (
+                                        <select className="ml-2 text-[10px] border border-slate-200 rounded px-1"
+                                          onChange={e => {
+                                            const m = route.xpm_matches.find(x => x.client.xpm_client_id === e.target.value)
+                                            if (m) updateOverride(rowKey, 'recipient_email', m.client.job_admin_email || '')
+                                          }}>
+                                          {route.xpm_matches.map(m => (
+                                            <option key={m.client.xpm_client_id} value={m.client.xpm_client_id}>
+                                              {m.client.name} ({m.score}%)
+                                            </option>
+                                          ))}
+                                        </select>
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
+                                {sent ? (
+                                  <span className="flex-shrink-0 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded">Sent ✓</span>
+                                ) : (
+                                  <button onClick={() => handleSend(doc)} disabled={sending}
+                                    className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-[#F47B20] hover:bg-[#d96d1a] disabled:bg-slate-200 disabled:text-slate-400 px-3 py-1.5 rounded-lg transition-all">
+                                    {sending ? <><IconSpinner small /> Sending…</> : '✉ Send'}
+                                  </button>
+                                )}
+                              </div>
+                              {err && <p className="mt-1.5 text-xs text-red-500">{err}</p>}
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -817,6 +956,12 @@ function ReviewStep({ documents: initialDocs, onReset }) {
           className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold transition-all disabled:bg-slate-200 disabled:text-slate-400">
           {downloading ? <><IconSpinner /> Preparing...</> : <><IconDownload /> Download All as ZIP</>}
         </button>
+        {routedCount > 0 && (
+          <button onClick={handleSendAll}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#F47B20] hover:bg-[#d96d1a] text-white font-semibold text-sm transition-all">
+            ✉ Send All ({routedCount})
+          </button>
+        )}
       </div>
     </div>
   )
@@ -1057,6 +1202,92 @@ function UsersPanel({ onClose }) {
   )
 }
 
+// ── XPM panel ────────────────────────────────────────────────────────────────
+
+function XpmPanel({ onClose }) {
+  const [status, setStatus] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
+
+  const fetchStatus = useCallback(async () => {
+    const res = await authFetch('/api/admin/xpm/status')
+    if (res.ok) setStatus(await res.json())
+  }, [])
+
+  useEffect(() => { fetchStatus() }, [fetchStatus])
+
+  const connect = () => {
+    const w = window.open('/api/admin/xpm/authorize', '_blank', 'width=600,height=700')
+    const check = setInterval(async () => {
+      if (w?.closed) {
+        clearInterval(check)
+        await fetchStatus()
+      }
+    }, 1000)
+  }
+
+  const sync = async () => {
+    setSyncing(true); setSyncMsg('')
+    try {
+      const res = await authFetch('/api/admin/xpm/sync', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail)
+      setSyncMsg(`Synced ${data.synced} clients`)
+      await fetchStatus()
+    } catch (e) { setSyncMsg(`Error: ${e.message}`) } finally { setSyncing(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white shadow-2xl flex flex-col h-full">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <h2 className="font-semibold text-slate-800">XPM Connection</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><IconClose /></button>
+        </div>
+        <div className="p-5 flex flex-col gap-4">
+          <div className={`rounded-xl p-4 border ${status?.connected ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`text-sm font-semibold ${status?.connected ? 'text-emerald-700' : 'text-amber-700'}`}>
+              {status === null ? 'Checking…' : status.connected ? '✓ Connected to XPM' : '✗ Not connected'}
+            </p>
+            {status?.connected && (
+              <p className="text-xs text-emerald-600 mt-1">{status.client_count} clients cached</p>
+            )}
+          </div>
+
+          {!status?.connected && (
+            <button onClick={connect}
+              className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm">
+              Connect to XPM (Xero)
+            </button>
+          )}
+
+          {status?.connected && (
+            <div>
+              <button onClick={sync} disabled={syncing}
+                className="w-full py-2.5 rounded-xl bg-[#1B3A6B] hover:bg-[#152E57] text-white font-semibold text-sm disabled:bg-slate-200 disabled:text-slate-400 flex items-center justify-center gap-2">
+                {syncing ? <><IconSpinner small /> Syncing clients…</> : <><IconReset /> Sync Client List</>}
+              </button>
+              {syncMsg && <p className="mt-2 text-xs text-center text-slate-500">{syncMsg}</p>}
+              <p className="mt-3 text-xs text-slate-400 text-center">
+                Run sync after adding or changing clients in XPM.
+              </p>
+            </div>
+          )}
+
+          <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 text-xs text-slate-500 space-y-1.5">
+            <p className="font-semibold text-slate-600">Routing rules</p>
+            <p>PAYG Notice → Elayne Chin</p>
+            <p>SRO / Refund Cheque / TFN Letter / Notice of Assessment → Client's Job Admin (XPM)</p>
+            <p>ASIC Corporate Key / ABN / GST → Sharon Teh</p>
+            <p className="text-slate-400 italic pt-1">Other document types — no auto-routing</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000
@@ -1070,6 +1301,7 @@ export default function App() {
   const [authPage, setAuthPage] = useState('login') // 'login' | 'signup' | 'forgot'
   const [logsOpen, setLogsOpen] = useState(false)
   const [usersOpen, setUsersOpen] = useState(false)
+  const [xpmOpen, setXpmOpen] = useState(false)
   const [step, setStep] = useState('Upload')
   const [sessions, setSessions] = useState([])
   const [documents, setDocuments] = useState([])
@@ -1141,6 +1373,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50">
       {logsOpen && <LogsPanel onClose={() => setLogsOpen(false)} isAdmin={isAdmin} />}
       {usersOpen && <UsersPanel onClose={() => setUsersOpen(false)} />}
+      {xpmOpen && <XpmPanel onClose={() => setXpmOpen(false)} />}
 
       <header className="bg-white border-b border-slate-100 shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
@@ -1151,6 +1384,9 @@ export default function App() {
             <>
               <button onClick={() => setUsersOpen(true)}
                 className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">Users</button>
+              <span className="text-slate-200">|</span>
+              <button onClick={() => setXpmOpen(true)}
+                className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">XPM</button>
               <span className="text-slate-200">|</span>
             </>
           )}

@@ -25,6 +25,7 @@ from utils.db import (
     list_users, update_user, delete_user, create_reset_token, consume_reset_token,
 )
 from utils.email_sender import send_reset_email
+from utils.email_router import get_routing, render_email
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -483,6 +484,170 @@ async def download_batch(req: BatchDownloadRequest, user: dict = Depends(require
     logger.info(f"[{user['email']}] Batch ZIP download: {total} docs across {len(req.sessions)} sessions")
     return FileResponse(zip_path, media_type="application/zip", filename="processed_documents.zip",
                         headers={"Content-Disposition": "attachment; filename=processed_documents.zip"})
+
+
+# ── XPM endpoints ─────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/xpm/status")
+def xpm_status(admin: dict = Depends(require_admin)):
+    from utils.xpm_client import is_connected, client_cache_count
+    connected = is_connected()
+    return {"connected": connected, "client_count": client_cache_count() if connected else 0}
+
+
+@app.get("/api/admin/xpm/authorize")
+def xpm_authorize(admin: dict = Depends(require_admin)):
+    from utils.xpm_client import get_authorize_url
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(get_authorize_url())
+
+
+@app.get("/api/admin/xpm/callback")
+def xpm_callback(code: str = None, error: str = None, state: str = None):
+    from utils.xpm_client import exchange_code, get_tenant_id, save_tokens
+    from fastapi.responses import HTMLResponse
+    if error or not code:
+        return HTMLResponse(f"<p>Error: {error or 'No code received'}</p>", status_code=400)
+    try:
+        tokens = exchange_code(code)
+        tenant_id = get_tenant_id(tokens["access_token"])
+        save_tokens(tokens, tenant_id)
+        logger.info("XPM connected successfully")
+        return HTMLResponse(
+            "<html><body style='font-family:sans-serif;text-align:center;padding:60px'>"
+            "<h2 style='color:#1B3A6B'>XPM Connected!</h2>"
+            "<p>You can close this window.</p>"
+            "<script>setTimeout(()=>window.close(),2000)</script>"
+            "</body></html>"
+        )
+    except Exception as e:
+        logger.error(f"XPM callback error: {e}")
+        return HTMLResponse(f"<p>Error connecting XPM: {e}</p>", status_code=500)
+
+
+@app.post("/api/admin/xpm/sync")
+def xpm_sync(admin: dict = Depends(require_admin)):
+    from utils.xpm_client import sync_clients_cache
+    count = sync_clients_cache()
+    _audit("INFO", "xpm", f"[{admin['email']}] Synced {count} XPM clients")
+    return {"synced": count}
+
+
+# ── Routing + send endpoints ───────────────────────────────────────────────────
+
+@app.get("/api/route/{session_id}/{doc_index}")
+def get_route(session_id: str, doc_index: int, user: dict = Depends(require_auth)):
+    from utils.xpm_client import fuzzy_match_client, is_connected
+    session_dir = SESSIONS_DIR / session_id
+    docs_path = session_dir / "documents.json"
+    if not docs_path.exists():
+        raise HTTPException(404, "Session not found")
+    docs = json.loads(docs_path.read_text())
+    doc = next((d for d in docs if d["index"] == doc_index), None)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+
+    doc_type = doc.get("doc_type", "")
+    client_name = doc.get("client_name", "")
+    rule = get_routing(doc_type)
+
+    if not rule:
+        return {"routed": False, "reason": "No routing rule for this document type"}
+
+    result: dict = {
+        "routed": True,
+        "recipient_type": rule["recipient_type"],
+        "template_key": rule.get("template", "default"),
+    }
+
+    if rule["recipient_type"] == "fixed":
+        rendered = render_email(rule.get("template", "default"), client_name, doc_type)
+        result.update({
+            "recipient_email": rule["email"],
+            "recipient_name": rule["name"],
+            "subject": rendered["subject"],
+            "body": rendered["body"],
+            "xpm_matches": [],
+        })
+    else:  # job_admin
+        if not is_connected():
+            return {"routed": False, "reason": "XPM not connected — connect via admin panel"}
+        matches = fuzzy_match_client(client_name)
+        result["xpm_matches"] = matches
+        if matches and matches[0]["score"] >= 80:
+            best = matches[0]["client"]
+            if not best.get("job_admin_email"):
+                result["routed"] = False
+                result["reason"] = f"Client matched ({best['name']}) but no job admin email in XPM"
+            else:
+                rendered = render_email("default", client_name, doc_type)
+                result.update({
+                    "recipient_email": best["job_admin_email"],
+                    "recipient_name": best["job_admin_name"],
+                    "xpm_client_name": best["name"],
+                    "match_score": matches[0]["score"],
+                    "subject": rendered["subject"],
+                    "body": rendered["body"],
+                })
+        else:
+            result["routed"] = False
+            result["reason"] = "No confident XPM client match — please select manually"
+
+    return result
+
+
+class SendRequest(BaseModel):
+    session_id: str
+    doc_index: int
+    recipient_email: str
+    recipient_name: str
+    subject: str
+    body: str
+    suggested_name: str
+
+
+@app.post("/api/send")
+async def send_document(req: SendRequest, user: dict = Depends(require_auth)):
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+    from email.mime.application import MIMEApplication
+
+    session_dir = SESSIONS_DIR / req.session_id
+    pdf_path = session_dir / f"doc_{req.doc_index}.pdf"
+    if not pdf_path.exists():
+        raise HTTPException(404, "Document file not found")
+
+    host = os.getenv("SMTP_HOST")
+    port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    from_addr = os.getenv("FROM_EMAIL", smtp_user)
+
+    if not all([host, smtp_user, smtp_pass]):
+        raise HTTPException(503, "Email not configured. Add SMTP credentials to environment.")
+
+    msg = MIMEMultipart()
+    msg["Subject"] = req.subject
+    msg["From"] = f"AscendPoint <{from_addr}>"
+    msg["To"] = req.recipient_email
+    msg.attach(MIMEText(req.body, "plain"))
+
+    with open(pdf_path, "rb") as f:
+        part = MIMEApplication(f.read(), _subtype="pdf")
+        part.add_header("Content-Disposition", "attachment", filename=req.suggested_name)
+        msg.attach(part)
+
+    def _send():
+        with smtplib.SMTP(host, port) as s:
+            s.ehlo()
+            s.starttls()
+            s.login(smtp_user, smtp_pass)
+            s.sendmail(from_addr, [req.recipient_email], msg.as_string())
+
+    await asyncio.to_thread(_send)
+    _audit("INFO", "email", f"[{user['email']}] Sent {req.suggested_name} to {req.recipient_email}")
+    return {"ok": True}
 
 
 # Serve React frontend in production
