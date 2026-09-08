@@ -17,7 +17,7 @@ XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize"
 XERO_TOKEN_URL = "https://identity.xero.com/connect/token"
 XERO_CONNECTIONS_URL = "https://api.xero.com/connections"
 XPM_API_BASE = "https://api.xero.com/practicemgr/1.0"
-SCOPES = "openid profile email offline_access practicemgr"
+SCOPES = "openid profile email offline_access"
 
 
 def get_authorize_url() -> str:
