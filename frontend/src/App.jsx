@@ -665,22 +665,25 @@ function ReviewStep({ documents: initialDocs, onReset }) {
     setSendingDoc(key)
     setSendError(prev => ({ ...prev, [key]: null }))
     try {
-      const res = await authFetch('/api/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: doc.session_id,
-          doc_index: doc.index,
-          recipient_email: route.recipient_email,
-          recipient_name: route.recipient_name,
-          subject: route.subject,
-          body: route.body,
-          suggested_name: doc.suggested_name,
-        }),
-      })
-      handle401(res)
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Send failed')
+      const payload = {
+        session_id: doc.session_id,
+        doc_index: doc.index,
+        recipient_email: route.recipient_email,
+        recipient_name: route.recipient_name || '',
+        subject: route.subject,
+        body: route.body,
+        suggested_name: doc.suggested_name,
+      }
+      await triggerDownload(async () => {
+        const res = await authFetch('/api/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        handle401(res)
+        if (!res.ok) throw new Error((await res.json()).detail || 'Failed to generate draft')
+        return res.blob()
+      }, doc.suggested_name.replace('.pdf', '.eml'))
       setSentDocs(prev => new Set([...prev, key]))
     } catch (e) {
       setSendError(prev => ({ ...prev, [key]: e.message }))
@@ -695,6 +698,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
       const route = getRecipient(key)
       if (route?.routed && !sentDocs.has(key)) {
         await handleSend(doc)
+        await new Promise(r => setTimeout(r, 300))
       }
     }
   }
@@ -912,11 +916,11 @@ function ReviewStep({ documents: initialDocs, onReset }) {
                                   )}
                                 </div>
                                 {sent ? (
-                                  <span className="flex-shrink-0 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded">Sent ✓</span>
+                                  <span className="flex-shrink-0 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded">Draft ready ✓</span>
                                 ) : (
                                   <button onClick={() => handleSend(doc)} disabled={sending}
                                     className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-[#F47B20] hover:bg-[#d96d1a] disabled:bg-slate-200 disabled:text-slate-400 px-3 py-1.5 rounded-lg transition-all">
-                                    {sending ? <><IconSpinner small /> Sending…</> : '✉ Send'}
+                                    {sending ? <><IconSpinner small /> Preparing…</> : '✉ Open in Outlook'}
                                   </button>
                                 )}
                               </div>
@@ -959,7 +963,7 @@ function ReviewStep({ documents: initialDocs, onReset }) {
         {routedCount > 0 && (
           <button onClick={handleSendAll}
             className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#F47B20] hover:bg-[#d96d1a] text-white font-semibold text-sm transition-all">
-            ✉ Send All ({routedCount})
+            ✉ Open All in Outlook ({routedCount})
           </button>
         )}
       </div>

@@ -596,7 +596,7 @@ def get_route(session_id: str, doc_index: int, user: dict = Depends(require_auth
     return result
 
 
-class SendRequest(BaseModel):
+class DraftRequest(BaseModel):
     session_id: str
     doc_index: int
     recipient_email: str
@@ -606,31 +606,22 @@ class SendRequest(BaseModel):
     suggested_name: str
 
 
-@app.post("/api/send")
-async def send_document(req: SendRequest, user: dict = Depends(require_auth)):
-    import smtplib
+@app.post("/api/draft")
+async def draft_email(req: DraftRequest, user: dict = Depends(require_auth)):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.mime.application import MIMEApplication
+    from email.utils import formataddr
+    from fastapi.responses import Response
 
     session_dir = SESSIONS_DIR / req.session_id
     pdf_path = session_dir / f"doc_{req.doc_index}.pdf"
     if not pdf_path.exists():
         raise HTTPException(404, "Document file not found")
 
-    host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_pass = os.getenv("SMTP_PASS")
-    from_addr = os.getenv("FROM_EMAIL", smtp_user)
-
-    if not all([host, smtp_user, smtp_pass]):
-        raise HTTPException(503, "Email not configured. Add SMTP credentials to environment.")
-
     msg = MIMEMultipart()
+    msg["To"] = formataddr((req.recipient_name, req.recipient_email)) if req.recipient_name else req.recipient_email
     msg["Subject"] = req.subject
-    msg["From"] = f"AscendPoint <{from_addr}>"
-    msg["To"] = req.recipient_email
     msg.attach(MIMEText(req.body, "plain"))
 
     with open(pdf_path, "rb") as f:
@@ -638,16 +629,13 @@ async def send_document(req: SendRequest, user: dict = Depends(require_auth)):
         part.add_header("Content-Disposition", "attachment", filename=req.suggested_name)
         msg.attach(part)
 
-    def _send():
-        with smtplib.SMTP(host, port) as s:
-            s.ehlo()
-            s.starttls()
-            s.login(smtp_user, smtp_pass)
-            s.sendmail(from_addr, [req.recipient_email], msg.as_string())
-
-    await asyncio.to_thread(_send)
-    _audit("INFO", "email", f"[{user['email']}] Sent {req.suggested_name} to {req.recipient_email}")
-    return {"ok": True}
+    eml_filename = req.suggested_name.replace(".pdf", ".eml")
+    _audit("INFO", "email", f"[{user['email']}] Generated Outlook draft for {req.suggested_name} → {req.recipient_email}")
+    return Response(
+        content=msg.as_bytes(),
+        media_type="message/rfc822",
+        headers={"Content-Disposition": f'attachment; filename="{eml_filename}"'},
+    )
 
 
 # Serve React frontend in production
