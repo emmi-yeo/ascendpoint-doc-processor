@@ -1220,8 +1220,11 @@ function XpmPanel({ onClose }) {
 
   useEffect(() => { fetchStatus() }, [fetchStatus])
 
-  const connect = () => {
-    const w = window.open('/api/admin/xpm/authorize', '_blank', 'width=600,height=700')
+  const connect = async () => {
+    const res = await authFetch('/api/admin/xpm/authorize-url')
+    if (!res.ok) return
+    const { url } = await res.json()
+    const w = window.open(url, '_blank', 'width=600,height=700')
     const check = setInterval(async () => {
       if (w?.closed) {
         clearInterval(check)

@@ -495,11 +495,10 @@ def xpm_status(admin: dict = Depends(require_admin)):
     return {"connected": connected, "client_count": client_cache_count() if connected else 0}
 
 
-@app.get("/api/admin/xpm/authorize")
-def xpm_authorize(admin: dict = Depends(require_admin)):
+@app.get("/api/admin/xpm/authorize-url")
+def xpm_authorize_url(admin: dict = Depends(require_admin)):
     from utils.xpm_client import get_authorize_url
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(get_authorize_url())
+    return {"url": get_authorize_url()}
 
 
 @app.get("/api/admin/xpm/callback")
