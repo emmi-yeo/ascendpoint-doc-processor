@@ -121,10 +121,17 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10).replace(/-/g, '')
 }
 
-function makeFilename(docType, clientName) {
-  const type = (docType || 'Other').replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_')
-  const client = (clientName || 'Unknown').replace(/[^\w\s]/g, '').trim().replace(/\s+/g, '_').slice(0, 40)
-  return `${type}_${client}_${todayStr()}.pdf`
+function toProperCase(str) {
+  return (str || '').replace(/[^\w\s\-]/g, '').trim().replace(/\s+/g, ' ')
+    .split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+}
+
+function makeFilename(docType, clientName, sequence, date) {
+  const type = (docType || 'Other').replace(/[^\w\s\-]/g, '').trim().replace(/\s+/g, ' ')
+  const client = toProperCase(clientName || 'Unknown').slice(0, 60)
+  const d = date || todayStr()
+  if (sequence === 'client_first') return `${client} - ${type}_${d}.pdf`
+  return `${type} - ${client}_${d}.pdf`
 }
 
 // Opens save dialog BEFORE fetching so the user gesture context is preserved
@@ -632,7 +639,13 @@ function ProcessingStep({ fileCount }) {
 // ── Review step ───────────────────────────────────────────────────────────────
 
 function ReviewStep({ documents: initialDocs, onReset }) {
-  const [docs, setDocs] = useState(initialDocs)
+  const [docs, setDocs] = useState(() =>
+    initialDocs.map(d => ({
+      ...d,
+      sequence: 'doc_first',
+      suggested_name: makeFilename(d.doc_type, d.client_name, 'doc_first', d.date),
+    }))
+  )
   const [downloading, setDownloading] = useState(false)
   const [downloadingAll, setDownloadingAll] = useState(false)
   const [downloadingRow, setDownloadingRow] = useState(null)
@@ -720,7 +733,17 @@ function ReviewStep({ documents: initialDocs, onReset }) {
     setDocs(prev => {
       const next = [...prev]
       next[i] = { ...next[i], [field]: value }
-      next[i].suggested_name = makeFilename(next[i].doc_type, next[i].client_name)
+      next[i].suggested_name = makeFilename(next[i].doc_type, next[i].client_name, next[i].sequence, next[i].date)
+      return next
+    })
+  }
+
+  const swapSequence = (i) => {
+    setDocs(prev => {
+      const next = [...prev]
+      const seq = next[i].sequence === 'doc_first' ? 'client_first' : 'doc_first'
+      next[i] = { ...next[i], sequence: seq }
+      next[i].suggested_name = makeFilename(next[i].doc_type, next[i].client_name, seq, next[i].date)
       return next
     })
   }
@@ -856,6 +879,10 @@ function ReviewStep({ documents: initialDocs, onReset }) {
                           </span>
                           <span className="text-xs text-slate-400">File:</span>
                           <span className="text-xs font-mono text-slate-600 truncate">{doc.suggested_name}</span>
+                          <button onClick={() => swapSequence(globalIdx)} title="Swap order: Doc Type ↔ Client Name"
+                            className="text-xs text-slate-400 hover:text-[#1B3A6B] border border-slate-200 hover:border-[#1B3A6B] rounded px-1.5 py-0.5 flex-shrink-0 transition-colors">
+                            ↔
+                          </button>
                           <span className="text-xs text-slate-300">{doc.page_count}p</span>
                           <button onClick={() => handleDownloadOne(doc)} disabled={downloadingRow === rowKey}
                             className="ml-auto flex-shrink-0 text-xs text-[#1B3A6B] hover:text-[#0f2040] disabled:text-slate-300 font-medium flex items-center gap-1">

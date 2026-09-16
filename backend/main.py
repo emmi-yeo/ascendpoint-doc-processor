@@ -19,7 +19,7 @@ from jose import jwt, JWTError
 import hashlib, secrets as _secrets
 
 from utils.pdf_splitter import split_pdf
-from utils.ai_namer import name_document, generate_filename
+from utils.ai_namer import name_document, generate_filename, get_today
 from utils.db import (
     init_db, get_user_by_email, get_user_by_id, create_user,
     list_users, update_user, delete_user, create_reset_token, consume_reset_token,
@@ -391,6 +391,7 @@ async def process_documents(session_id: str, req: ProcessRequest, user: dict = D
                 "page_count": page_count,
                 "client_name": ai.get("client_name", ""),
                 "doc_type": ai.get("doc_type", ""),
+                "date": get_today(),
                 "suggested_name": generate_filename(ai),
                 "error": None,
             })

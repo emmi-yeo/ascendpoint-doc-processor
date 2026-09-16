@@ -94,10 +94,19 @@ def name_document(pdf_path: Path) -> dict:
             raise RuntimeError(f"AI processing failed: {error_str}") from e
 
 
-def generate_filename(ai: dict) -> str:
+def _clean(text: str, max_len: int = 60) -> str:
+    text = re.sub(r"[^\w\s\-]", "", text).strip()
+    return re.sub(r"\s+", " ", text)[:max_len]
+
+
+def generate_filename(ai: dict, sequence: str = "doc_first") -> str:
     today = datetime.date.today().strftime("%Y%m%d")
-    doc_type = re.sub(r"[^\w\s]", "", ai.get("doc_type", "Other")).strip()
-    doc_type = re.sub(r"\s+", "_", doc_type)
-    client = re.sub(r"[^\w\s]", "", ai.get("client_name", "Unknown")).strip()
-    client = re.sub(r"\s+", "_", client)[:40]
-    return f"{doc_type}_{client}_{today}.pdf"
+    doc_type = _clean(ai.get("doc_type", "Other"))
+    client = _clean(ai.get("client_name", "Unknown").title())
+    if sequence == "client_first":
+        return f"{client} - {doc_type}_{today}.pdf"
+    return f"{doc_type} - {client}_{today}.pdf"
+
+
+def get_today() -> str:
+    return datetime.date.today().strftime("%Y%m%d")
